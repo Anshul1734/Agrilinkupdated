@@ -192,7 +192,7 @@ const FarmerDashboard: React.FC = () => {
   const { data: inventory = [], isLoading: inventoryLoading } = useQuery({
     queryKey: ['farmer_inventory', user?.id],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:5000/api/products?sellerId=${user?.id}`);
+      const res = await fetch(`/api/products?sellerId=${user?.id}`);
       if (!res.ok) throw new Error('Failed to fetch inventory');
       return res.json();
     },
@@ -222,7 +222,7 @@ const FarmerDashboard: React.FC = () => {
 
   const addProductMutation = useMutation({
     mutationFn: async (newProduct: any) => {
-      const res = await fetch('http://localhost:5000/api/products', {
+      const res = await fetch('/api/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newProduct),
@@ -273,7 +273,7 @@ const FarmerDashboard: React.FC = () => {
 
   const updateStockMutation = useMutation({
     mutationFn: async ({ id, quantityAvailable }: { id: number, quantityAvailable: number }) => {
-      const res = await fetch(`http://localhost:5000/api/products/${id}/stock`, {
+      const res = await fetch(`/api/products/${id}/stock`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quantityAvailable, inStock: quantityAvailable > 0 }),

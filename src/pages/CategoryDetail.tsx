@@ -19,7 +19,7 @@ const CategoryDetail: React.FC = () => {
   const { data: category = null, isLoading: categoryLoading } = useQuery({
     queryKey: ['category', categoryId],
     queryFn: async () => {
-      const res = await fetch('http://localhost:5000/api/categories');
+      const res = await fetch('/api/categories');
       if (!res.ok) throw new Error('Failed to fetch');
       const cats = await res.json();
       return cats.find((c: any) => c.id === categoryId) || null;
@@ -30,7 +30,7 @@ const CategoryDetail: React.FC = () => {
   const { data: rawProducts = [], isLoading: productsLoading } = useQuery({
     queryKey: ['products', { category: categoryId }],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:5000/api/products?categoryId=${categoryId}`);
+      const res = await fetch(`/api/products?categoryId=${categoryId}`);
       if (!res.ok) throw new Error('Failed to fetch products');
       return res.json();
     },

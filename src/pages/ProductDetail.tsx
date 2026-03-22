@@ -20,7 +20,7 @@ const ProductDetail: React.FC = () => {
     queryKey: ['product', id],
     queryFn: async () => {
       if (!id) return null;
-      const res = await fetch(`http://localhost:5000/api/products/${id}`);
+      const res = await fetch(`/api/products/${id}`);
       if (!res.ok) {
         if (res.status === 406 || res.status === 404) return null;
         throw new Error('Failed to fetch product');

@@ -33,7 +33,7 @@ const BuyerDashboard: React.FC = () => {
   const { data: realOrders = [], isLoading: ordersLoading } = useQuery({
     queryKey: ['buyer_orders', user?.id],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:5000/api/orders?buyerId=${user?.id}`);
+      const res = await fetch(`/api/orders?buyerId=${user?.id}`);
       if (!res.ok) throw new Error('Failed to fetch orders');
       return res.json();
     },

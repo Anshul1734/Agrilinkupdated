@@ -10,7 +10,7 @@ const FeaturedProducts: React.FC = () => {
   const { data: featuredProducts = [], isLoading } = useQuery({
     queryKey: ['featured_products'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:5000/api/products');
+      const res = await fetch('/api/products');
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       return data.slice(0, 4); // Take first 4

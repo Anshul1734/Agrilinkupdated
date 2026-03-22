@@ -1,0 +1,115 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 90 40% 98%;
+    --foreground: 90 10% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 90 10% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 90 10% 11%;
+
+    --primary: 84 60% 28%;
+    --primary-foreground: 90 40% 98%;
+
+    --secondary: 84 60% 35%;
+    --secondary-foreground: 90 40% 98%;
+
+    --muted: 90 20% 96%;
+    --muted-foreground: 90 6% 46%;
+
+    --accent: 84 100% 45%;
+    --accent-foreground: 90 40% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 90 40% 98%;
+
+    --border: 84 20% 88%;
+    --input: 84 20% 88%;
+    --ring: 84 60% 28%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 90 5% 10%;
+    --foreground: 90 10% 97%;
+
+    --card: 90 5% 10%;
+    --card-foreground: 90 10% 97%;
+
+    --popover: 90 5% 10%;
+    --popover-foreground: 90 10% 97%;
+
+    --primary: 84 60% 35%;
+    --primary-foreground: 90 10% 97%;
+
+    --secondary: 84 40% 25%;
+    --secondary-foreground: 90 10% 97%;
+
+    --muted: 84 20% 20%;
+    --muted-foreground: 90 10% 60%;
+
+    --accent: 84 70% 40%;
+    --accent-foreground: 90 10% 97%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 90 10% 97%;
+
+    --border: 84 10% 25%;
+    --input: 84 10% 25%;
+    --ring: 84 50% 45%;
+    
+    --sidebar-background: 90 5% 10%;
+    --sidebar-foreground: 90 10% 80%;
+    --sidebar-primary: 84 60% 35%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 90 5% 15%;
+    --sidebar-accent-foreground: 90 10% 80%;
+    --sidebar-border: 90 5% 20%;
+    --sidebar-ring: 84 50% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .hero-section {
+    @apply relative overflow-hidden bg-gradient-to-r from-agrilink-dark via-agrilink-primary to-agrilink-secondary text-white;
+  }
+
+  .button-primary {
+    @apply bg-agrilink-primary text-white hover:bg-agrilink-secondary transition-colors;
+  }
+
+  .button-secondary {
+    @apply bg-agrilink-light text-agrilink-dark hover:bg-agrilink-accent/30 transition-colors;
+  }
+
+  .product-card {
+    @apply bg-white rounded-lg shadow-md overflow-hidden transition-all hover:shadow-xl;
+  }
+}

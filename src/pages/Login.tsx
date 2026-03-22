@@ -17,7 +17,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { UserType } from "@/types";
@@ -61,8 +61,10 @@ const terrainTypes = [...new Set(terrainData.map(item => item.type))];
 const Login: React.FC = () => {
   const { isAuthenticated, login } = useAuth();
   const { toast } = useToast();
+  const location = useLocation();
   const navigate = useNavigate();
-  const [userType, setUserType] = useState<UserType>("Buyer");
+  const [userType, setUserType] = useState<UserType>(location.state?.defaultTab || "Buyer");
+  const [tabContent, setTabContent] = useState<string>(location.state?.action || "login");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -173,7 +175,7 @@ const Login: React.FC = () => {
     <Layout>
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-md mx-auto">
-          <Tabs defaultValue="login">
+          <Tabs value={tabContent} onValueChange={setTabContent}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login" id="login-tab">Login</TabsTrigger>
               <TabsTrigger value="signup" id="signup-tab">Sign Up</TabsTrigger>
@@ -285,7 +287,7 @@ const Login: React.FC = () => {
                   <p className="w-full">
                     Don't have an account?{" "}
                     <button 
-                      onClick={() => document.getElementById("signup-tab")?.click()}
+                      onClick={(e) => { e.preventDefault(); setTabContent("signup"); }}
                       className="text-agrilink-primary hover:underline"
                     >
                       Sign up now
@@ -436,7 +438,7 @@ const Login: React.FC = () => {
                   <p className="w-full">
                     Already have an account?{" "}
                     <button 
-                      onClick={() => document.getElementById("login-tab")?.click()}
+                      onClick={(e) => { e.preventDefault(); setTabContent("login"); }}
                       className="text-agrilink-primary hover:underline"
                     >
                       Login here

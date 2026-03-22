@@ -19,7 +19,7 @@ const CallToAction: React.FC = () => {
               <Link to="/products">Start Shopping</Link>
             </Button>
             <Button asChild size="lg" className="border-white text-white hover:bg-white/10 w-full sm:w-auto border">
-              <Link to="/register">Become a Seller</Link>
+              <Link to="/login" state={{ defaultTab: "Farmer", action: "signup" }}>Become a Seller</Link>
             </Button>
           </div>
         </div>

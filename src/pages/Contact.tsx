@@ -1,198 +1,92 @@
-
 import React, { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 import Layout from "@/components/Layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Crumbs } from "@/components/PageState";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Phone, Mail, MapPin, ArrowDown, ArrowUp } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
+import { api, ApiError } from "@/lib/api";
 
-interface FaqItem {
-  question: string;
-  answer: string;
-}
+const faqItems = [
+  { question: "How does Agrilink connect farmers and buyers?", answer: "Farmers list products with their own prices and stock. Buyers order directly, and each farmer is responsible for fulfilling the items they sold." },
+  { question: "How do I pay?", answer: "Payment is cash on delivery. Nothing is charged online; you pay when your items arrive. An order's payment shows as Paid once all of its items are delivered." },
+  { question: "Can I order from more than one farmer at once?", answer: "Yes. Each farmer ships their own items, so progress can differ within one order, and shipping is charged once per farmer." },
+  { question: "What if I need to cancel?", answer: "You can cancel an item while it is still Pending. Once the farmer starts processing it, contact the farmer or us. Cancelled items return to the farmer's stock." },
+  { question: "Who can write a review?", answer: "Only buyers with a delivered order for that product, once per purchase. Reviews are marked as verified purchases." },
+  { question: "I'm a farmer. How do I start selling?", answer: "Create a farm account, then add products from your farm page with a photo, price and stock. You'll get a notice whenever someone orders from you." },
+];
 
 const Contact: React.FC = () => {
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
-  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [website, setWebsite] = useState(""); // honeypot, hidden from people
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast({
-      title: "Message Sent!",
-      description: "We'll get back to you as soon as possible.",
-    });
-    setName("");
-    setEmail("");
-    setMessage("");
-  };
+  const send = useMutation({
+    mutationFn: () => api.post("/contact", { name, email, message, website }),
+    onSuccess: () => {
+      toast({ title: "Message sent", description: "Thanks for reaching out. We'll reply by email." });
+      setName("");
+      setEmail("");
+      setMessage("");
+    },
+    onError: (err) =>
+      toast({ title: "Couldn't send your message", description: err instanceof ApiError ? err.message : "Please try again.", variant: "destructive" }),
+  });
 
-  const toggleFaq = (index: number) => {
-    if (expandedFaq === index) {
-      setExpandedFaq(null);
-    } else {
-      setExpandedFaq(index);
-    }
-  };
-
-  const faqItems: FaqItem[] = [
-    {
-      question: "How does Agrilink connect farmers and buyers?",
-      answer: "Agrilink provides a direct marketplace platform where farmers can list their products and buyers can purchase directly, eliminating middlemen and ensuring better prices for both parties."
-    },
-    {
-      question: "What types of products can I find on Agrilink?",
-      answer: "You can find various agricultural products including vegetables, fruits, grains, dairy, poultry, seafood, herbs, spices, nuts, and farm-fresh beverages."
-    },
-    {
-      question: "How do I know the products are fresh?",
-      answer: "All products on Agrilink come directly from local farms, ensuring freshness. Products are harvested and delivered within a short timeframe, and we maintain strict quality control standards."
-    },
-    {
-      question: "Can farmers get assistance with understanding market prices?",
-      answer: "Yes, Agrilink provides market intelligence tools for farmers to understand current market trends and set competitive prices for their products."
-    },
-    {
-      question: "How does Agrilink support sustainable farming?",
-      answer: "We prioritize and highlight farmers who use sustainable farming practices. We also conduct workshops and provide resources on sustainable agriculture techniques."
-    }
-  ];
+  // Contact details come from configuration so nothing invented is ever shown.
+  const details = [
+    ["Email", import.meta.env.VITE_CONTACT_EMAIL as string | undefined, "mailto:"],
+    ["Phone", import.meta.env.VITE_CONTACT_PHONE as string | undefined, "tel:"],
+    ["Address", import.meta.env.VITE_CONTACT_ADDRESS as string | undefined, ""],
+  ].filter((d): d is [string, string, string] => !!d[1]);
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-12">
-        <h1 className="text-3xl font-bold mb-8">Contact Us</h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-4">
-              <div className="w-12 h-12 bg-agrilink-primary/10 rounded-full flex items-center justify-center">
-                <Phone className="h-6 w-6 text-agrilink-primary" />
+      <div className="container py-4 md:py-5">
+        <Crumbs items={[{ label: "Home", to: "/" }, { label: "Contact us" }]} />
+        <h1 className="mb-4 text-xl font-bold md:text-2xl">Contact us</h1>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_26rem]">
+          <section id="faq" aria-labelledby="faq-h" className="panel order-2 p-4 md:p-6 lg:order-1">
+            <h2 id="faq-h" className="text-lg font-bold">Frequently asked questions</h2>
+            <Accordion type="single" collapsible className="mt-2">
+              {faqItems.map((f, i) => (
+                <AccordionItem key={f.question} value={`q${i}`}>
+                  <AccordionTrigger>{f.question}</AccordionTrigger>
+                  <AccordionContent>{f.answer}</AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </section>
+
+          <section aria-labelledby="msg-h" className="panel order-1 p-4 md:p-6 lg:order-2 lg:self-start">
+            <h2 id="msg-h" className="text-lg font-bold">Send us a message</h2>
+            <p className="mt-0.5 text-sm text-ink-soft">We'll reply by email.</p>
+            <form onSubmit={(e) => { e.preventDefault(); send.mutate(); }} className="mt-4 space-y-4">
+              <div className="space-y-1.5"><Label htmlFor="name">Name</Label><Input id="name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required /></div>
+              <div className="space-y-1.5"><Label htmlFor="email">Email</Label><Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required /></div>
+              <div className="space-y-1.5"><Label htmlFor="message">Message</Label><Textarea id="message" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="How can we help? Include an order number if it's about one." rows={5} minLength={10} required /></div>
+              <div className="absolute -left-[9999px]" aria-hidden="true">
+                <label htmlFor="website">Leave this empty</label>
+                <input id="website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
               </div>
-              <div>
-                <CardTitle>Phone</CardTitle>
-                <CardDescription>Call us directly</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p>+91 98765 43210</p>
-              <p>+91 12345 67890</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-4">
-              <div className="w-12 h-12 bg-agrilink-primary/10 rounded-full flex items-center justify-center">
-                <Mail className="h-6 w-6 text-agrilink-primary" />
-              </div>
-              <div>
-                <CardTitle>Email</CardTitle>
-                <CardDescription>Send us a message</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p>contact@agrilink.com</p>
-              <p>support@agrilink.com</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-4">
-              <div className="w-12 h-12 bg-agrilink-primary/10 rounded-full flex items-center justify-center">
-                <MapPin className="h-6 w-6 text-agrilink-primary" />
-              </div>
-              <div>
-                <CardTitle>Address</CardTitle>
-                <CardDescription>Visit our office</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p>123 Farm Road, Agri Tower</p>
-              <p>Bengaluru, Karnataka 560001</p>
-            </CardContent>
-          </Card>
-        </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
-          <div>
-            <h2 className="text-2xl font-bold mb-6">Send Us a Message</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium mb-1">Name</label>
-                <Input 
-                  id="name" 
-                  value={name} 
-                  onChange={(e) => setName(e.target.value)} 
-                  placeholder="Your name" 
-                  required 
-                />
-              </div>
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium mb-1">Email</label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
-                  placeholder="Your email" 
-                  required 
-                />
-              </div>
-              <div>
-                <label htmlFor="message" className="block text-sm font-medium mb-1">Message</label>
-                <Textarea 
-                  id="message" 
-                  value={message} 
-                  onChange={(e) => setMessage(e.target.value)} 
-                  placeholder="How can we help?" 
-                  rows={5} 
-                  required 
-                />
-              </div>
-              <Button type="submit" className="w-full">Send Message</Button>
+              <Button type="submit" size="lg" className="w-full" disabled={send.isPending}>{send.isPending && <Loader2 className="animate-spin" />} Send message</Button>
             </form>
-          </div>
-          <div className="h-[400px] bg-gray-200 rounded-lg overflow-hidden">
-            <iframe 
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d497698.6600754044!2d77.35072963214122!3d12.954517010112693!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae1670c9b44e6d%3A0xf8dfc3e8517e4fe0!2sBengaluru%2C%20Karnataka!5e0!3m2!1sen!2sin!4v1710052200092!5m2!1sen!2sin" 
-              width="100%" 
-              height="100%" 
-              style={{ border: 0 }} 
-              allowFullScreen 
-              loading="lazy" 
-              referrerPolicy="no-referrer-when-downgrade"
-              title="Agrilink office location"
-            ></iframe>
-          </div>
-        </div>
-        
-        <div className="mb-16">
-          <h2 className="text-2xl font-bold mb-6">Frequently Asked Questions</h2>
-          <div className="space-y-4">
-            {faqItems.map((faq, index) => (
-              <Card key={index} className="overflow-hidden">
-                <CardHeader 
-                  className="cursor-pointer p-4 flex flex-row justify-between items-center"
-                  onClick={() => toggleFaq(index)}
-                >
-                  <CardTitle className="text-lg">{faq.question}</CardTitle>
-                  {expandedFaq === index ? 
-                    <ArrowUp className="h-5 w-5" /> : 
-                    <ArrowDown className="h-5 w-5" />
-                  }
-                </CardHeader>
-                {expandedFaq === index && (
-                  <CardContent className="pt-0 pb-4 px-4">
-                    <p>{faq.answer}</p>
-                  </CardContent>
-                )}
-              </Card>
-            ))}
-          </div>
+
+            {details.length > 0 && (
+              <dl className="mt-6 space-y-3 border-t border-rule pt-5 text-sm">
+                {details.map(([k, v, scheme]) => (
+                  <div key={k}><dt className="eyebrow">{k}</dt><dd className="mt-0.5 font-medium">{scheme ? <a href={`${scheme}${v}`} className="text-field hover:underline">{v}</a> : v}</dd></div>
+                ))}
+              </dl>
+            )}
+          </section>
         </div>
       </div>
     </Layout>

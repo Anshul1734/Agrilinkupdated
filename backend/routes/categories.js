@@ -1,20 +1,24 @@
 import express from 'express';
-import { supabase } from '../supabaseClient.js';
+import { dbError, wrap } from '../lib/errors.js';
 
-const router = express.Router();
+export default function categoryRoutes({ supabase }) {
+  const router = express.Router();
 
-router.get('/', async (req, res) => {
-  try {
-    const { data, error } = await supabase.from('Category').select('*');
-    if (error) {
-      console.error('Error fetching categories from Supabase:', error);
-      return res.status(500).json({ error: 'Failed to fetch categories' });
-    }
-    res.json(data);
-  } catch (err) {
-    console.error('Server error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+  router.get(
+    '/',
+    wrap(async (_req, res) => {
+      const { data, error } = await supabase.from('Category').select('*').order('id');
+      if (error) throw dbError(error, 'list categories');
 
-export default router;
+      // productCount in the table is a stale seed value; compute the real one in SQL (no row cap).
+      const { data: rows, error: countError } = await supabase.rpc('category_counts');
+      if (countError) throw dbError(countError, 'count products');
+      const counts = new Map(rows.map((r) => [r.categoryId, r.n]));
+
+      res.set('Cache-Control', 'public, max-age=60');
+      res.json(data.map((c) => ({ ...c, productCount: counts.get(c.id) || 0 })));
+    }),
+  );
+
+  return router;
+}

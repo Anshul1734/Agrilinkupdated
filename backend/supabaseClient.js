@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-dotenv.config();
+import { config } from './config.js';
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export function createSupabase() {
+  return createClient(config.supabaseUrl, config.supabaseServiceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}

@@ -1,127 +1,75 @@
-
 import React from "react";
-import Layout from "@/components/Layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/context/AuthContext";
-import { Navigate, useNavigate } from "react-router-dom";
-import { Star, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Trash2 } from "lucide-react";
+import AccountLayout from "@/components/AccountLayout";
+import { Stars } from "@/components/Stars";
+import { PageMessage, PageSpinner } from "@/components/PageState";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useState } from "react";
-
-// Mock reviews data
-const myReviews = [
-  {
-    id: 1,
-    productId: 1,
-    productName: "Tomatoes",
-    rating: 5,
-    reviewText: "Great tomatoes! They taste just like the ones my grandmother used to grow.",
-    reviewDate: "2023-03-05"
-  },
-  {
-    id: 2,
-    productId: 2,
-    productName: "Apples",
-    rating: 4,
-    reviewText: "Apples were fresh and juicy. Will buy again!",
-    reviewDate: "2023-04-15"
-  },
-  {
-    id: 11,
-    productId: 21,
-    productName: "Quinoa",
-    rating: 4,
-    reviewText: "Good quality quinoa, cooks well and tastes great!",
-    reviewDate: "2024-01-10"
-  },
-  {
-    id: 12,
-    productId: 22,
-    productName: "Mangoes",
-    rating: 5,
-    reviewText: "Best mangoes ever! So sweet and juicy.",
-    reviewDate: "2024-02-15"
-  }
-];
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { api, ApiError } from "@/lib/api";
+import { useMyReviews } from "@/lib/queries";
+import { formatDate } from "@/lib/format";
+import type { MyReview } from "@/types";
 
 const MyReviews: React.FC = () => {
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
-  }
-  
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }).map((_, index) => (
-      <Star 
-        key={index}
-        className={`h-4 w-4 ${index < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
-      />
-    ));
-  };
-  
-  const filteredReviews = searchTerm.trim() === "" 
-    ? myReviews 
-    : myReviews.filter(review => 
-        review.productName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        review.reviewText.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-  
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data, isLoading, isError, refetch } = useMyReviews();
+  const [deleting, setDeleting] = React.useState<MyReview | null>(null);
+
+  const remove = useMutation({
+    mutationFn: (id: number) => api.delete(`/reviews/${id}`),
+    onSuccess: () => {
+      for (const key of ["my-reviews", "reviews", "reviews-eligible", "product", "products"]) queryClient.invalidateQueries({ queryKey: [key] });
+      setDeleting(null);
+      toast({ title: "Review deleted" });
+    },
+    onError: (err) => toast({ title: "Couldn't delete the review", description: err instanceof ApiError ? err.message : undefined, variant: "destructive" }),
+  });
+
+  const items = data?.items ?? [];
+
   return (
-    <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-wrap items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              className="p-0 hover:bg-transparent"
-              onClick={() => navigate('/buyer-dashboard')}
-            >
-              <ArrowLeft className="h-5 w-5 mr-2" />
-            </Button>
-            <h1 className="text-3xl font-bold text-agrilink-primary">My Reviews</h1>
-          </div>
-        </div>
-        
-        <div className="mb-6">
-          <Input
-            type="search"
-            placeholder="Search reviews by product or content..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-md"
-          />
-        </div>
-        
-        {filteredReviews.length === 0 ? (
-          <div className="text-center p-8 bg-gray-50 rounded-lg">
-            <p className="text-lg text-gray-600">No reviews found matching your search.</p>
-          </div>
-        ) : (
-          <div className="grid gap-6">
-            {filteredReviews.map(review => (
-              <Card key={review.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle>{review.productName}</CardTitle>
-                      <CardDescription>Reviewed on {review.reviewDate}</CardDescription>
-                    </div>
-                    <div className="flex">{renderStars(review.rating)}</div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p>{review.reviewText}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-    </Layout>
+    <AccountLayout title="My reviews" subtitle="Each review is tied to a delivered order.">
+      {isLoading ? (
+        <PageSpinner />
+      ) : isError ? (
+        <div className="panel"><PageMessage plate="gate" title="Your reviews didn't load" action={{ label: "Try again", onClick: () => refetch() }} /></div>
+      ) : items.length === 0 ? (
+        <div className="panel"><PageMessage plate="ledger" title="No reviews yet" description="When an order is delivered, you can rate its products from the order page." action={{ label: "View my orders", to: "/orders" }} /></div>
+      ) : (
+        <ul className="space-y-3">
+          {items.map((r) => (
+            <li key={r.id} className="panel flex items-start justify-between gap-4 p-4">
+              <div className="min-w-0">
+                <Link to={`/product/${r.productId}`} className="text-[15px] font-semibold hover:text-field hover:underline">{r.productName}</Link>
+                <div className="mt-1 flex items-center gap-2"><Stars value={r.rating} /><span className="figure text-xs text-ink-soft">{formatDate(r.created_at)}</span></div>
+                {r.comment && <p className="mt-2 whitespace-pre-line text-[14.5px] leading-relaxed">{r.comment}</p>}
+              </div>
+              <Button variant="ghost" size="icon-sm" aria-label={`Delete review of ${r.productName}`} className="shrink-0 text-ink-soft hover:bg-chili-wash hover:text-chili" onClick={() => setDeleting(r)}><Trash2 /></Button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this review?</AlertDialogTitle>
+            <AlertDialogDescription>Your review of {deleting?.productName} is removed and the rating recalculated. You can write a new one for this purchase afterwards.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogAction className="bg-chili hover:bg-chili/90" onClick={() => deleting && remove.mutate(deleting.id)}>Delete review</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </AccountLayout>
   );
 };
 

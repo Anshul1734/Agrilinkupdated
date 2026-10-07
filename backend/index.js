@@ -1,31 +1,13 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import categoryRoutes from './routes/categories.js';
-import productRoutes from './routes/products.js';
-import orderRoutes from './routes/orders.js';
+import { config } from './config.js';
+import { createApp } from './app.js';
 
-dotenv.config();
+const app = createApp();
 
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-app.use(cors());
-app.use(express.json());
-
-// API Routes
-app.use('/api/categories', categoryRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/orders', orderRoutes);
-
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Backend is running!' });
-});
-
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+// On Vercel the app is exported as a serverless handler; everywhere else (local, VM, container) we listen on a port,
+// including with NODE_ENV=production.
+if (!process.env.VERCEL) {
+  app.listen(config.port, () => {
+    console.log(`API listening on http://localhost:${config.port}`);
   });
 }
 

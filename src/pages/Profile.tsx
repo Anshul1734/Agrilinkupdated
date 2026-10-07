@@ -1,172 +1,62 @@
-
 import React from "react";
-import Layout from "@/components/Layout";
+import { FormProvider, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
+import AccountLayout from "@/components/AccountLayout";
+import ProfileFields, { FieldError } from "@/components/ProfileFields";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { User, LayoutDashboard, ShoppingBag, LogOut } from "lucide-react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/components/ui/use-toast";
-import { UserType } from "@/types";
+import { useToast } from "@/hooks/use-toast";
+import { formatDate } from "@/lib/format";
+import { authErrorMessage, profileFormSchema, type ProfileFormValues , asProfileForm } from "@/lib/validation";
 
 const Profile: React.FC = () => {
-  const { user, isAuthenticated, userType, logout } = useAuth();
+  const { profile, updateProfile } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
-  
-  const handleLogout = () => {
-    logout();
-    toast({
-      title: "Logged out successfully",
-      description: "You have been logged out from your account"
-    });
-    navigate('/');
-  };
-  
-  // If not authenticated, redirect to login
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
-  }
-  
-  // If farmer, redirect to farmer dashboard
-  if (userType === "Farmer") {
-    return <Navigate to="/farmer-dashboard" />;
-  }
-  
-  // If buyer, redirect to buyer dashboard
-  if (userType === "Buyer") {
-    return <Navigate to="/buyer-dashboard" />;
-  }
-  
-  // This code will only run if userType is neither Farmer nor Buyer
+
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema),
+    defaultValues: {
+      role: profile?.role ?? "Buyer",
+      name: profile?.name ?? "",
+      contactNumber: profile?.contactNumber ?? "",
+      address: profile?.address ?? "",
+      terrain: profile?.terrain ?? "",
+    },
+  });
+
+  if (!profile) return null; // RequireAuth guarantees a profile; this only narrows the type.
+
+  const onSubmit = form.handleSubmit(async ({ name, contactNumber, address, terrain }) => {
+    try {
+      await updateProfile({ name, contactNumber, address, terrain: profile.role === "Farmer" ? terrain : undefined });
+      form.reset({ role: profile.role, name, contactNumber, address, terrain });
+      toast({ title: "Profile saved" });
+    } catch (err) {
+      form.setError("root", { message: authErrorMessage(err) });
+    }
+  });
+
   return (
-    <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex flex-col md:flex-row gap-8">
-            {/* Sidebar */}
-            <div className="w-full md:w-1/3">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="h-10 w-10 rounded-full bg-agrilink-primary text-white flex items-center justify-center">
-                      <User className="h-5 w-5" />
-                    </div>
-                    {user?.name}
-                  </CardTitle>
-                  <CardDescription>
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-agrilink-primary/10 text-agrilink-primary text-xs">
-                      {userType === "Farmer" ? "Farmer Account" : "Buyer Account"}
-                    </span>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <nav className="flex flex-col space-y-1">
-                    <Button variant="ghost" className="justify-start" asChild>
-                      <Link to="/profile">
-                        <User className="mr-2 h-4 w-4" />
-                        My Profile
-                      </Link>
-                    </Button>
-                    {userType === "Farmer" && (
-                      <Button variant="ghost" className="justify-start" asChild>
-                        <Link to="/farmer-dashboard">
-                          <LayoutDashboard className="mr-2 h-4 w-4" />
-                          Farmer Dashboard
-                        </Link>
-                      </Button>
-                    )}
-                    {userType === "Buyer" && (
-                      <Button variant="ghost" className="justify-start" asChild>
-                        <Link to="/buyer-dashboard">
-                          <LayoutDashboard className="mr-2 h-4 w-4" />
-                          Buyer Dashboard
-                        </Link>
-                      </Button>
-                    )}
-                    <Button variant="ghost" className="justify-start" asChild>
-                      <Link to="/my-reviews">
-                        <ShoppingBag className="mr-2 h-4 w-4" />
-                        My Orders
-                      </Link>
-                    </Button>
-                    <Separator className="my-2" />
-                    <Button 
-                      variant="ghost" 
-                      className="justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
-                      onClick={handleLogout}
-                    >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Logout
-                    </Button>
-                  </nav>
-                </CardContent>
-              </Card>
+    <AccountLayout title="Profile & address" subtitle={`${profile.email} · Member since ${formatDate(profile.created_at)}`}>
+      <section className="panel p-4 md:p-6">
+        <FormProvider {...asProfileForm(form)}>
+          <form onSubmit={onSubmit} className="max-w-xl space-y-4" noValidate>
+            <ProfileFields prefix="pr" showRole={false} />
+            <FieldError message={form.formState.errors.root?.message} />
+            <div className="flex items-center gap-3 pt-2">
+              <Button type="submit" size="lg" disabled={form.formState.isSubmitting || !form.formState.isDirty}>
+                {form.formState.isSubmitting && <Loader2 className="animate-spin" />} Save changes
+              </Button>
+              {form.formState.isDirty && <span className="text-[13px] text-ink-soft">You have unsaved changes</span>}
             </div>
-            
-            {/* Main Content */}
-            <div className="w-full md:w-2/3">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Profile Information</CardTitle>
-                  <CardDescription>Your personal account details</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Full Name</h3>
-                    <p>{user?.name}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Email Address</h3>
-                    <p>{user?.email}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Contact Number</h3>
-                    <p>{user?.contactNumber}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Address</h3>
-                    <p>{user?.address}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Account Type</h3>
-                    <p>{userType}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Registration Date</h3>
-                    <p>{user?.registrationDate}</p>
-                  </div>
-                  
-                  {userType === "Farmer" as UserType && (
-                    <>
-                      <Separator />
-                      <div className="pt-2">
-                        <h3 className="font-medium mb-2">Farmer Details</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Farm Location</h4>
-                            <p>{user?.farmLocation || "Not specified"}</p>
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Farm Size</h4>
-                            <p>{user?.farmSize ? `${user.farmSize} acres` : "Not specified"}</p>
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Terrain Type</h4>
-                            <p>{user?.terrainType || "Not specified"}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Layout>
+          </form>
+        </FormProvider>
+        <p className="mt-6 max-w-xl border-t border-rule pt-4 text-[13px] text-ink-soft">
+          Account type: <span className="font-semibold text-ink">{profile.role === "Farmer" ? "Seller" : "Buyer"}</span> (fixed when you signed up). {profile.role === "Farmer" ? "Buyers never see your phone number or address unless they order from you." : "Farmers see your name, address and phone only for items they must deliver to you."}
+        </p>
+      </section>
+    </AccountLayout>
   );
 };
 

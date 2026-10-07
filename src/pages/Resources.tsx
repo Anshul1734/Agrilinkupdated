@@ -1,8 +1,8 @@
 
-import React, { useState } from "react";
+import React from "react";
 import Layout from "@/components/Layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ArrowRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { Crumbs } from "@/components/PageState";
 
 interface SchemeItem {
   name: string;
@@ -86,57 +86,41 @@ const Resources: React.FC = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-12">
-        <h1 className="text-3xl font-bold mb-8">Farming Resources</h1>
-        
-        <div className="mb-16">
-          <h2 className="text-2xl font-bold mb-6">Government Schemes for Farmers</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {governmentSchemes.map((scheme, index) => (
-              <Card key={index}>
-                <CardHeader>
-                  <CardTitle className="text-lg">{scheme.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p><strong>Description:</strong> {scheme.description}</p>
-                  <p><strong>Eligibility:</strong> {scheme.eligibility}</p>
-                  <a 
-                    href={scheme.link} 
-                    target="_blank" 
-                    rel="noreferrer" 
-                    className="text-agrilink-primary hover:underline inline-flex items-center"
-                  >
-                    Learn more <ArrowRight className="ml-1 h-4 w-4" />
-                  </a>
-                </CardContent>
-              </Card>
+      <div className="container py-4 md:py-5">
+        <Crumbs items={[{ label: "Home", to: "/" }, { label: "Farmer resources" }]} />
+        <h1 className="text-xl font-bold md:text-2xl">Farmer resources</h1>
+        <p className="mb-4 mt-0.5 max-w-2xl text-sm text-ink-soft">Government support you may be entitled to, and what tends to grow well on each kind of land. Check each scheme's official page for current terms.</p>
+
+        <section aria-labelledby="schemes-h">
+          <h2 id="schemes-h" className="mb-3 text-lg font-bold">Government schemes</h2>
+          <ul className="grid gap-3 md:grid-cols-2">
+            {governmentSchemes.map((scheme) => (
+              <li key={scheme.name} className="panel flex flex-col p-4">
+                <h3 className="text-[15px] font-bold leading-snug">{scheme.name}</h3>
+                <p className="mt-2 text-[14px] leading-relaxed">{scheme.description}</p>
+                <p className="mt-2 text-[13px] text-ink-soft"><span className="font-semibold text-ink">Who qualifies: </span>{scheme.eligibility}</p>
+                <a href={scheme.link} target="_blank" rel="noreferrer" className="mt-auto inline-flex items-center gap-1 pt-3 text-sm font-semibold text-field hover:underline">
+                  Official page <ArrowUpRight className="h-4 w-4" /><span className="sr-only"> (opens in a new tab)</span>
+                </a>
+              </li>
             ))}
-          </div>
-        </div>
-        
-        <div>
-          <h2 className="text-2xl font-bold mb-6">Farming Terrain Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {terrainInfo.map((terrain, index) => (
-              <Card key={index}>
-                <CardHeader>
-                  <CardTitle className="text-lg">{terrain.type}</CardTitle>
-                  <CardDescription>{terrain.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <h4 className="font-medium mb-2">Suitable Crops:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {terrain.crops.map((crop, i) => (
-                      <span key={i} className="bg-agrilink-primary/10 text-agrilink-primary px-3 py-1 rounded-full text-sm">
-                        {crop}
-                      </span>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+          </ul>
+        </section>
+
+        <section className="mt-8" aria-labelledby="terrain-h">
+          <h2 id="terrain-h" className="mb-3 text-lg font-bold">Land and what suits it</h2>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {terrainInfo.map((terrain) => (
+              <li key={terrain.type} className="panel p-4">
+                <h3 className="text-[15px] font-bold">{terrain.type}</h3>
+                <p className="mt-1 text-[13.5px] text-ink-soft">{terrain.description}</p>
+                <ul className="mt-3 flex flex-wrap gap-1.5">
+                  {terrain.crops.map((c) => <li key={c} className="rounded-full bg-field-wash px-2.5 py-1 text-xs font-semibold text-field">{c}</li>)}
+                </ul>
+              </li>
             ))}
-          </div>
-        </div>
+          </ul>
+        </section>
       </div>
     </Layout>
   );

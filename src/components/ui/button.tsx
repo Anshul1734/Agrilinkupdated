@@ -1,39 +1,44 @@
-
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * - default      brand green: the main action on a screen (Place order, Save, Sign in)
+ * - add          solid red: Add to basket
+ * - addOutline   red outline: the small Add button on product cards
+ * - outline      grey outline: secondary actions
+ * - ghost / quiet / link: low-emphasis actions
+ */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-        agrilink: "bg-agrilink-primary text-white hover:bg-agrilink-secondary transition-all",
-        success: "bg-green-600 text-white hover:bg-green-700 transition-all",
-        warning: "bg-amber-500 text-white hover:bg-amber-600 transition-all",
-        info: "bg-blue-500 text-white hover:bg-blue-600 transition-all",
-        analytics: "bg-green-800 text-white hover:bg-green-900 transition-all",
+        default: "bg-field text-white hover:bg-field-deep",
+        add: "bg-chili text-white hover:bg-chili/90",
+        addOutline: "border border-chili bg-chili-wash/60 text-chili hover:bg-chili hover:text-white",
+        ink: "bg-ink text-white hover:bg-ink/85",
+        destructive: "bg-chili text-white hover:bg-chili/90",
+        outline: "border border-input bg-paper-raised text-ink hover:border-ink/60 hover:bg-paper-sunk",
+        secondary: "bg-paper-sunk text-ink hover:bg-accent",
+        ghost: "text-ink hover:bg-paper-sunk",
+        quiet: "h-auto px-0 py-0 font-medium text-ink hover:text-field hover:underline",
+        link: "h-auto px-0 py-0 font-medium text-field hover:underline",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
+        default: "h-10 px-4",
+        sm: "h-8 px-3 text-[13px]",
+        lg: "h-12 px-6 text-[15px]",
         icon: "h-10 w-10",
-        action: "h-24 w-full p-2 rounded-lg", // Added for action buttons
-        wide: "h-10 px-8 py-2 w-full", // Added for wide buttons
+        "icon-sm": "h-8 w-8",
       },
     },
+    compoundVariants: [
+      { variant: "quiet", size: ["default", "sm", "lg"], className: "h-auto px-0" },
+      { variant: "link", size: ["default", "sm", "lg"], className: "h-auto px-0" },
+    ],
     defaultVariants: {
       variant: "default",
       size: "default",
@@ -61,4 +66,5 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 )
 Button.displayName = "Button"
 
+// eslint-disable-next-line react-refresh/only-export-components
 export { Button, buttonVariants }

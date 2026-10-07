@@ -1,244 +1,294 @@
-
-import React from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Search, ShoppingCart, User, Menu, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import {
+  ChevronDown, Grid2x2, House, LayoutDashboard, LogOut, MapPin, Package, Search, ShoppingBasket, Star, UserRound, Menu,
+} from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Wordmark } from "@/components/Brand";
+import NotificationBell from "@/components/NotificationBell";
+import { useQueryClient } from "@tanstack/react-query";
+import { MOCK_ENABLED, resetMockState } from "@/mocks/api";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
+import { useCategories } from "@/lib/queries";
+import { dashboardPath } from "@/lib/routes";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
+const shortAddress = (a?: string | null) => (a ? a.split(",").slice(-2).join(",").trim() || a : "");
+
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const location = useLocation();
+  const navigate = useNavigate();
   const { cartCount } = useCart();
-  
+  const { status, profile, isAuthenticated, signOut } = useAuth();
+  const { data: categories = [] } = useCategories();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  /** Demo mode only: restores the seed orders and listings, empties every basket, and reloads. */
+  const resetDemo = () => {
+    resetMockState();
+    queryClient.clear();
+    try {
+      Object.keys(localStorage).filter((k) => k.startsWith("agrilink:cart:v2:")).forEach((k) => localStorage.removeItem(k));
+    } catch { /* storage blocked: nothing to clear */ }
+    window.location.reload();
+  };
+
+  const [bump, setBump] = useState(false);
+  const prevCount = useRef(cartCount);
+  useEffect(() => {
+    if (cartCount > prevCount.current) {
+      setBump(true);
+      const t = setTimeout(() => setBump(false), 350);
+      prevCount.current = cartCount;
+      return () => clearTimeout(t);
+    }
+    prevCount.current = cartCount;
+  }, [cartCount]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      window.location.href = `/products?q=${encodeURIComponent(searchQuery)}`;
-    }
+    const q = searchQuery.trim();
+    if (q) navigate(`/products?q=${encodeURIComponent(q)}`);
   };
 
-  const { toast } = useToast();
-
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast({ title: "Subscribed!", description: "Thank you for subscribing to our newsletter." });
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+    toast({ title: "Signed out", description: "See you at the next harvest." });
   };
 
-  const handleComingSoon = (e: React.MouseEvent) => {
-    e.preventDefault();
-    toast({ title: "Coming Soon", description: "This page is currently under construction." });
-  };
+  const signedIn = isAuthenticated && !!profile;
+  const isFarmer = profile?.role === "Farmer";
+  const accountPath = signedIn ? dashboardPath(profile!.role) : "/login";
+  const initial = profile?.name?.trim().charAt(0).toUpperCase() || "?";
+  const place = signedIn && profile?.address ? shortAddress(profile.address) : "";
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
+  const searchForm = (cls: string) => (
+    <form onSubmit={handleSearch} role="search" className={cn("flex h-11 overflow-hidden rounded-lg border border-input bg-paper-raised transition-shadow focus-within:border-field focus-within:ring-2 focus-within:ring-field/20", cls)}>
+      <input
+        type="search"
+        aria-label="Search for fruits, vegetables, honey and more"
+        placeholder="Search for tomatoes, honey, millets…"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="min-w-0 flex-1 bg-transparent px-4 text-sm placeholder:text-ink-soft/70 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+      />
+      <button type="submit" aria-label="Search" className="flex w-12 items-center justify-center bg-field text-white transition-colors hover:bg-field-deep">
+        <Search className="h-[18px] w-[18px]" />
+      </button>
+    </form>
+  );
 
-  const navLinks = [
-    { name: "Home", path: "/" },
-    { name: "Products", path: "/products" },
-    { name: "Categories", path: "/categories" },
-    { name: "About", path: "/about" },
-    { name: "Contact", path: "/contact" },
-  ];
+  const locationChip = (
+    <Link
+      to={signedIn ? "/profile" : "/login"}
+      className="flex max-w-[15rem] items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-left hover:border-rule hover:bg-paper-sunk"
+      aria-label={place ? `Delivering to ${place}. Change address` : "Set delivery location"}
+    >
+      <MapPin className="h-5 w-5 shrink-0 text-field" />
+      <span className="min-w-0 leading-tight">
+        <span className="block text-[11px] font-medium text-ink-soft">{place ? "Delivering to" : "Delivery location"}</span>
+        <span className="flex items-center gap-0.5 truncate text-[13px] font-semibold">
+          <span className="truncate">{place || "Select location"}</span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+        </span>
+      </span>
+    </Link>
+  );
+
+  const navClass = ({ isActive }: { isActive: boolean }) =>
+    cn("whitespace-nowrap border-b-2 py-3 text-[13.5px] font-semibold transition-colors hover:text-field", isActive ? "border-field text-field" : "border-transparent text-ink");
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header/Navbar */}
-      <header className="bg-white border-b shadow-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex justify-between items-center">
-            {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-gradient-to-r from-agrilink-primary to-agrilink-secondary rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-lg">A</span>
-              </div>
-              <span className="text-2xl font-bold text-agrilink-primary">Agrilink</span>
-            </Link>
+    <div className="flex min-h-screen flex-col bg-paper">
+      <a href="#main" className="sr-only z-[60] rounded bg-ink px-4 py-2 text-white focus:not-sr-only focus:fixed focus:left-2 focus:top-2">
+        Skip to content
+      </a>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-6">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  to={link.path}
-                  className={`text-sm font-medium transition-colors hover:text-agrilink-primary ${
-                    location.pathname === link.path
-                      ? "text-agrilink-primary"
-                      : "text-gray-600"
-                  }`}
-                >
-                  {link.name}
-                </Link>
-              ))}
-            </nav>
+      {/* Utility bar (desktop) */}
+      <div className="hidden border-b border-rule bg-paper-raised md:block">
+        <div className="container flex h-9 items-center justify-between text-[12.5px] text-ink-soft">
+          <p>Fresh from the farm · Pay on delivery · Direct from farmers</p>
+          <nav className="flex items-center gap-5" aria-label="Utility">
+            <Link to="/login" state={{ defaultTab: "Farmer", action: "signup" }} className="font-medium hover:text-field">Sell on Agrilink</Link>
+            <Link to="/resources" className="font-medium hover:text-field">Farmer resources</Link>
+            <Link to="/contact#faq" className="font-medium hover:text-field">Help</Link>
+          </nav>
+        </div>
+      </div>
 
-            {/* Search, Cart, User - Desktop */}
-            <div className="hidden md:flex items-center space-x-4">
-              <form onSubmit={handleSearch} className="relative">
-                <Input
-                  type="text"
-                  placeholder="Search products..."
-                  className="w-64 pl-10"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              </form>
-              <Button variant="ghost" size="icon" asChild>
-                <Link to="/cart" className="relative">
-                  <ShoppingCart className="h-5 w-5" />
-                  {cartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-agrilink-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px]">
-                      {cartCount}
-                    </span>
-                  )}
-                </Link>
-              </Button>
-              <Button variant="ghost" size="icon" asChild>
-                <Link to="/profile">
-                  <User className="h-5 w-5" />
-                </Link>
-              </Button>
-            </div>
+      <header className="sticky top-0 z-50 bg-paper-raised shadow-[0_1px_0_hsl(var(--rule))]">
+        <div className="container">
+          <div className="flex h-16 items-center gap-3 md:h-[4.5rem] md:gap-6">
+            <Link to="/" aria-label="Agrilink home" className="shrink-0"><Wordmark /></Link>
+            <div className="hidden md:block">{locationChip}</div>
+            {searchForm("hidden max-w-2xl flex-1 md:flex")}
 
-            {/* Mobile Menu Button */}
-            <div className="md:hidden flex items-center space-x-4">
-              <Button variant="ghost" size="icon" asChild>
-                <Link to="/cart" className="relative">
-                  <ShoppingCart className="h-5 w-5" />
-                  {cartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-agrilink-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center justify-center min-w-[16px] h-[16px]">
-                      {cartCount}
-                    </span>
-                  )}
-                </Link>
-              </Button>
-              <Button variant="ghost" size="icon" onClick={toggleMenu}>
-                {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </Button>
+            <div className="ml-auto flex items-center gap-1 md:ml-0 md:gap-2">
+              {signedIn && <NotificationBell />}
+              {signedIn ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="hidden h-11 items-center gap-2 rounded-lg px-2 hover:bg-paper-sunk md:inline-flex" aria-label="Account menu">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-field text-sm font-bold text-white">{initial}</span>
+                      <span className="max-w-[6rem] truncate text-sm font-semibold">{profile!.name.split(" ")[0]}</span>
+                      <ChevronDown className="h-4 w-4 text-ink-soft" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-60">
+                    <DropdownMenuLabel className="font-normal">
+                      <p className="truncate text-sm font-bold">{profile!.name}</p>
+                      <p className="text-xs text-ink-soft">{isFarmer ? "Seller account" : "Buyer account"}</p>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => navigate(dashboardPath(profile!.role))}><LayoutDashboard /> {isFarmer ? "My farm" : "My account"}</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => navigate("/orders")}><Package /> {isFarmer ? "Sales orders" : "My orders"}</DropdownMenuItem>
+                    {!isFarmer && <DropdownMenuItem onSelect={() => navigate("/my-reviews")}><Star /> My reviews</DropdownMenuItem>}
+                    <DropdownMenuItem onSelect={() => navigate("/profile")}><UserRound /> Profile &amp; address</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={handleSignOut}><LogOut /> Sign out</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                status !== "loading" && (
+                  <Link to="/login" className="hidden h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold hover:bg-paper-sunk md:inline-flex">
+                    <UserRound className="h-5 w-5" /> Login / Sign up
+                  </Link>
+                )
+              )}
+              <Link
+                to="/cart"
+                aria-label={`Basket, ${cartCount} items`}
+                className={cn("inline-flex h-11 items-center gap-2 rounded-lg bg-field px-3.5 text-sm font-semibold text-white transition-colors hover:bg-field-deep", bump && "animate-bump")}
+              >
+                <ShoppingBasket className="h-5 w-5" />
+                <span className="hidden sm:inline">My Basket</span>
+                <span className="figure rounded bg-white/20 px-1.5 py-0.5 text-xs font-bold">{cartCount > 99 ? "99+" : cartCount}</span>
+              </Link>
             </div>
           </div>
 
-          {/* Mobile Menu */}
-          {isMenuOpen && (
-            <div className="md:hidden mt-4 pb-4 animate-fade-in">
-              <form onSubmit={handleSearch} className="relative mb-4">
-                <Input
-                  type="text"
-                  placeholder="Search products..."
-                  className="w-full pl-10"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              </form>
-              <nav className="flex flex-col space-y-3">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.name}
-                    to={link.path}
-                    className={`text-sm font-medium transition-colors hover:text-agrilink-primary ${
-                      location.pathname === link.path
-                        ? "text-agrilink-primary"
-                        : "text-gray-600"
-                    }`}
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    {link.name}
-                  </Link>
-                ))}
-                <Link
-                  to="/profile"
-                  className="text-sm font-medium text-gray-600 transition-colors hover:text-agrilink-primary"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  My Profile
-                </Link>
-              </nav>
-            </div>
-          )}
+          {/* Phone: search sits under the logo row, like a store app */}
+          <div className="pb-3 md:hidden">
+            <div className="mb-2 flex items-center">{locationChip}</div>
+            {searchForm("w-full")}
+          </div>
+        </div>
+
+        {/* Category bar (desktop) */}
+        <div className="hidden border-t border-rule md:block">
+          <div className="container flex items-center gap-7">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="my-1.5 inline-flex h-9 items-center gap-2 rounded-lg bg-field px-3.5 text-[13.5px] font-semibold text-white hover:bg-field-deep">
+                  <Menu className="h-4 w-4" /> Shop by Category <ChevronDown className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[26rem] p-3">
+                <div className="grid grid-cols-2 gap-1">
+                  {categories.map((c) => (
+                    <DropdownMenuItem key={c.id} onSelect={() => navigate(`/category/${c.id}`)} className="justify-between">
+                      <span className="font-medium">{c.name}</span>
+                      <span className="figure text-xs text-ink-soft">{c.productCount}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => navigate("/products")} className="font-semibold text-field">See every product</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <nav className="scrollbar-none flex min-w-0 flex-1 items-center gap-6 overflow-x-auto" aria-label="Categories">
+              {categories.slice(0, 7).map((c) => (
+                <NavLink key={c.id} to={`/category/${c.id}`} className={navClass}>{c.name}</NavLink>
+              ))}
+              <NavLink to="/products" end className={navClass}>All products</NavLink>
+            </nav>
+          </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-grow">
-        {children}
-      </main>
+      <main id="main" className="page-pad flex-grow">{children}</main>
 
       {/* Footer */}
-      <footer className="bg-agrilink-dark text-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {/* Logo and Description */}
-            <div className="md:col-span-1">
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                  <span className="text-agrilink-primary font-bold text-sm">A</span>
-                </div>
-                <span className="text-xl font-bold">Agrilink</span>
-              </div>
-              <p className="text-sm text-gray-300">
-                Connecting farmers and buyers directly for fresher produce and better prices.
+      <footer className="mt-10 border-t border-rule bg-paper-raised">
+        <div className="container py-10">
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
+            <div className="max-w-xs">
+              <Wordmark />
+              <p className="mt-3 text-[13px] leading-relaxed text-ink-soft">
+                Farm-fresh produce, straight from the farmer. Fair prices for the people who grow it, no middlemen, and you pay when it arrives.
               </p>
             </div>
-
-            {/* Quick Links */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
-              <ul className="space-y-2 text-sm text-gray-300">
-                <li><Link to="/" className="hover:text-white">Home</Link></li>
-                <li><Link to="/products" className="hover:text-white">Products</Link></li>
-                <li><Link to="/categories" className="hover:text-white">Categories</Link></li>
-                <li><Link to="/about" className="hover:text-white">About Us</Link></li>
-              </ul>
-            </div>
-
-            {/* Customer Service */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Customer Service</h3>
-              <ul className="space-y-2 text-sm text-gray-300">
-                <li><a href="#" onClick={handleComingSoon} className="hover:text-white cursor-pointer">Contact Us</a></li>
-                <li><a href="#" onClick={handleComingSoon} className="hover:text-white cursor-pointer">FAQs</a></li>
-                <li><a href="#" onClick={handleComingSoon} className="hover:text-white cursor-pointer">Shipping Information</a></li>
-                <li><a href="#" onClick={handleComingSoon} className="hover:text-white cursor-pointer">Returns & Refunds</a></li>
-              </ul>
-            </div>
-
-            {/* Newsletter */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Stay Updated</h3>
-              <p className="text-sm text-gray-300 mb-2">Subscribe to our newsletter for updates</p>
-              <form className="flex" onSubmit={handleSubscribe}>
-                <Input
-                  type="email"
-                  required
-                  placeholder="Your email"
-                  className="rounded-r-none text-gray-900"
-                />
-                <Button type="submit" className="rounded-l-none bg-agrilink-accent text-agrilink-dark hover:bg-agrilink-accent/90">
-                  Subscribe
-                </Button>
-              </form>
-            </div>
+            {[
+              { title: "Shop", links: [["All products", "/products"], ["Categories", "/categories"], ["My basket", "/cart"], ["My orders", "/orders"]] },
+              { title: "Sell with us", links: [["Become a seller", "/login", { defaultTab: "Farmer", action: "signup" }], ["Farmer resources", "/resources"], ["Government schemes", "/resources"]] },
+              { title: "Help", links: [["About Agrilink", "/about"], ["Contact us", "/contact"], ["FAQs", "/contact#faq"], ["Privacy policy", "/privacy"], ["Terms of service", "/terms"]] },
+            ].map((col) => (
+              <nav key={col.title} aria-label={col.title}>
+                <h2 className="mb-3 text-sm font-bold">{col.title}</h2>
+                <ul className="space-y-2 text-[13px]">
+                  {col.links.map(([label, to, state]) => (
+                    <li key={label as string}><Link to={to as string} state={state} className="text-ink-soft hover:text-field hover:underline">{label as string}</Link></li>
+                  ))}
+                </ul>
+              </nav>
+            ))}
           </div>
 
-          <div className="border-t border-gray-700 mt-8 pt-6 text-sm text-gray-400 flex flex-col md:flex-row justify-between">
-            <p>© {new Date().getFullYear()} Agrilink. All rights reserved.</p>
-            <div className="flex space-x-4 mt-2 md:mt-0">
-              <a href="#" onClick={handleComingSoon} className="hover:text-white cursor-pointer">Privacy Policy</a>
-              <a href="#" onClick={handleComingSoon} className="hover:text-white cursor-pointer">Terms of Service</a>
+          {categories.length > 0 && (
+            <div className="mt-8 border-t border-rule pt-6">
+              <h2 className="mb-3 text-sm font-bold">Popular categories</h2>
+              <p className="flex flex-wrap gap-x-1 gap-y-1.5 text-[13px] text-ink-soft">
+                {categories.map((c, i) => (
+                  <span key={c.id}>
+                    <Link to={`/category/${c.id}`} className="hover:text-field hover:underline">{c.name}</Link>
+                    {i < categories.length - 1 && <span className="mx-1.5 text-rule-strong">|</span>}
+                  </span>
+                ))}
+              </p>
             </div>
+          )}
+        </div>
+        <div className="border-t border-rule bg-paper">
+          <div className="container flex flex-col justify-between gap-1 py-4 text-[12.5px] text-ink-soft sm:flex-row">
+            <p>© {new Date().getFullYear()} Agrilink. All rights reserved.</p>
+            <p>
+              Cash on delivery · Prices set by farmers
+              {MOCK_ENABLED && <> · <button type="button" onClick={resetDemo} className="font-medium underline-offset-2 hover:text-field hover:underline">Reset demo data</button></>}
+            </p>
           </div>
         </div>
       </footer>
+
+      {/* Phone: bottom tab bar */}
+      <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 border-t border-rule bg-paper-raised shadow-[0_-2px_8px_rgba(0,0,0,0.06)] md:hidden" aria-label="Quick">
+        {[
+          { to: "/", label: "Home", icon: House, match: (p: string) => p === "/" },
+          { to: "/categories", label: "Categories", icon: Grid2x2, match: (p: string) => p.startsWith("/categor") || p.startsWith("/products") },
+          { to: "/cart", label: "Basket", icon: ShoppingBasket, badge: cartCount, match: (p: string) => p.startsWith("/cart") },
+          { to: accountPath, label: signedIn ? "Account" : "Login", icon: UserRound, match: (p: string) => p.startsWith("/login") || p.includes("dashboard") || p.startsWith("/profile") || p.startsWith("/order") },
+        ].map(({ to, label, icon: Icon, badge, match }) => {
+          const active = match(location.pathname);
+          return (
+            <Link key={label} to={to} aria-current={active ? "page" : undefined} className={cn("relative flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold", active ? "text-field" : "text-ink-soft")}>
+              <Icon className="h-5 w-5" strokeWidth={active ? 2.4 : 2} />
+              <span>{label}</span>
+              {!!badge && <span className="figure absolute right-[calc(50%-1.6rem)] top-1.5 rounded-full bg-chili px-1.5 text-[10px] font-bold text-white">{badge > 99 ? "99+" : badge}</span>}
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 };

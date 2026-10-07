@@ -1,84 +1,105 @@
-
 export type UserType = "Buyer" | "Farmer";
 
-export interface User {
-  id: number;
+export interface Profile {
+  uid: string;
+  email: string | null;
   name: string;
-  email: string;
-  contactNumber?: string;
-  address?: string;
-  userType: UserType;
-  registrationDate: string;
-  terrain?: string;
-  recommendedCrops?: string;
-  farmLocation?: string;
-  farmSize?: string;
-  terrainType?: string;
-}
-
-export interface Product {
-  id: number;
-  name: string;
-  price: number;
-  description: string;
-  farmerId: number;
-  farmerName: string;
-  category: string;
-  imageUrl: string;
-  rating: number;
-  reviews: number;
-  inStock: boolean;
-  unit: string;
-  productionType?: string;
-  quantityAvailable?: number;
-  categoryName?: string;
-  categoryId?: number;
-  sellerId?: number;
-  sellerName?: string;
-}
-
-export interface Review {
-  id: number;
-  productId: number;
-  userId: number;
-  userName: string;
-  rating: number;
-  comment: string;
-  date: string;
-  reviewText?: string;
-  reviewDate?: string;
-}
-
-export interface Order {
-  id: number;
-  buyerId: number;
-  products: {
-    productId: number;
-    productName: string;
-    quantity: number;
-    price: number;
-  }[];
-  totalAmount: number;
-  status: "Pending" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
-  orderDate: string;
-  deliveryDate?: string;
-}
-
-export interface Cart {
-  items: {
-    productId: number;
-    productName: string;
-    quantity: number;
-    price: number;
-    imageUrl: string;
-  }[];
-  totalAmount: number;
+  role: UserType;
+  contactNumber?: string | null;
+  address?: string | null;
+  terrain?: string | null;
+  created_at: string;
 }
 
 export interface Category {
   id: number;
   name: string;
   description: string;
-  imageUrl: string;
+  imageUrl?: string;
   productCount: number;
+}
+
+export interface Product {
+  id: number;
+  name: string;
+  description?: string | null;
+  price: number;
+  unit: string;
+  quantityAvailable: number;
+  inStock: boolean;
+  categoryId: number;
+  categoryName: string;
+  sellerId: string;
+  sellerName: string;
+  productionType?: string | null;
+  imageUrl?: string | null;
+  /** Optional list price. When higher than `price`, cards show it struck through with a "% OFF" tag. */
+  mrp?: number | null;
+  /** Average of verified-purchase reviews (0 when there are none). */
+  rating: number;
+  reviews: number;
+  created_at: string;
+}
+
+export type OrderStatus = "Pending" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
+
+export interface OrderItem {
+  id: number;
+  orderId: number;
+  productId: number | null;
+  productName: string;
+  unit?: string | null;
+  unitPrice: number;
+  quantity: number;
+  sellerId: string;
+  sellerName?: string | null;
+  status: OrderStatus;
+}
+
+export interface Order {
+  id: number;
+  created_at: string;
+  buyerId: string;
+  buyerName: string;
+  shippingAddress?: string | null;
+  contactNumber?: string | null;
+  shippingAmount: number;
+  totalAmount: number;
+  /** Subtotal of the (non-cancelled) lines visible to the caller. */
+  itemsSubtotal: number;
+  status: OrderStatus;
+  /** Cash on delivery is the only method today. */
+  paymentMethod: "COD";
+  /** Due until every live line is delivered, then Paid. Cancelled when nothing is left to pay for. */
+  paymentStatus: "Due" | "Paid" | "Cancelled";
+  items: OrderItem[];
+}
+
+export interface Review {
+  id: number;
+  productId: number;
+  reviewerName: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
+
+export interface MyReview extends Review {
+  productName: string;
+  productImage: string | null;
+}
+
+export interface AppNotification {
+  id: number;
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  read: boolean;
+  created_at: string;
+}
+
+export interface Paged<T> {
+  items: T[];
+  total: number;
 }

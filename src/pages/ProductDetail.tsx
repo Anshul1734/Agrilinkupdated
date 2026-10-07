@@ -1,304 +1,181 @@
-
-import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Leaf, Wheat, BadgeCheck, Star, Minus, Plus, Truck, ShieldCheck, RefreshCcw } from "lucide-react";
+import React, { useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { Banknote, Check, ShieldCheck, Store, Truck } from "lucide-react";
 import Layout from "@/components/Layout";
-import { Product, Review } from "@/types";
+import ProductionBadge from "@/components/ProductionBadge";
+import ProductReviews from "@/components/ProductReviews";
+import ProductRail from "@/components/ProductRail";
+import QtyStepper from "@/components/QtyStepper";
+import { RatingChip } from "@/components/Stars";
+import { withFallback } from "@/components/ProductCard";
+import { Button } from "@/components/ui/button";
+import { Crumbs, PageMessage, PageSpinner } from "@/components/PageState";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useProduct } from "@/lib/queries";
+import { PLACEHOLDER_IMAGE, formatDate, formatPrice } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [quantity, setQuantity] = useState(1);
-  const { addToCart } = useCart();
+  const { addItem, lines } = useCart();
+  const { profile } = useAuth();
   const { toast } = useToast();
+  const { data: product, isLoading, isError, error, refetch } = useProduct(id);
 
-  const { data: product = null, isLoading: loading } = useQuery({
-    queryKey: ['product', id],
-    queryFn: async () => {
-      if (!id) return null;
-      const res = await fetch(`/api/products/${id}`);
-      if (!res.ok) {
-        if (res.status === 406 || res.status === 404) return null;
-        throw new Error('Failed to fetch product');
-      }
-      return res.json();
-    },
-    enabled: !!id
-  });
-
-  const reviews: Review[] = []; // Reviews disabled pending unified backend
-
-  const renderProductionIcon = () => {
-    if (!product) return null;
-
-    switch (product.productionType) {
-      case "Organic":
-        return <Leaf className="h-5 w-5 mr-1 text-green-600" />;
-      case "Traditional":
-        return <Wheat className="h-5 w-5 mr-1 text-amber-600" />;
-      case "Hybrid":
-        return <BadgeCheck className="h-5 w-5 mr-1 text-blue-600" />;
-      default:
-        return null;
-    }
-  };
-
-  const renderProductionLabel = () => {
-    if (!product) return null;
-
-    const colorMap = {
-      "Organic": "bg-green-100 text-green-800 border-green-200",
-      "Traditional": "bg-amber-100 text-amber-800 border-amber-200",
-      "Hybrid": "bg-blue-100 text-blue-800 border-blue-200"
-    };
-
-    return (
-      <div className={`flex items-center px-3 py-1 rounded-full text-sm ${colorMap[product.productionType]} border`}>
-        {renderProductionIcon()}
-        {product.productionType}
-      </div>
-    );
-  };
-
-  const renderStars = (rating: number) => {
-    return [...Array(5)].map((_, i) => (
-      <Star 
-        key={i} 
-        className={`h-4 w-4 ${i < rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`} 
-      />
-    ));
-  };
-
-  const handleQuantityDecrease = () => {
-    if (quantity > 1) {
-      setQuantity(quantity - 1);
-    }
-  };
-
-  const handleQuantityIncrease = () => {
-    if (product && quantity < product.quantityAvailable) {
-      setQuantity(quantity + 1);
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
+    return <Layout><PageSpinner /></Layout>;
+  }
+  if (isError || !product) {
+    const notFound = (error as { status?: number } | null)?.status === 404;
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-12">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="bg-gray-200 rounded-lg h-96"></div>
-              <div>
-                <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2 mb-6"></div>
-                <div className="space-y-3">
-                  <div className="h-4 bg-gray-200 rounded"></div>
-                  <div className="h-4 bg-gray-200 rounded"></div>
-                  <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                </div>
-                <div className="h-10 bg-gray-200 rounded w-1/3 mt-6"></div>
-                <div className="h-12 bg-gray-200 rounded mt-6"></div>
-              </div>
-            </div>
+        <div className="container py-6">
+          <div className="panel">
+            <PageMessage
+              plate={notFound ? "search" : "gate"}
+              title={notFound ? "This product isn't available" : "This product didn't load"}
+              description={notFound ? "The farmer may have removed it, or the link is wrong." : "Please try again in a moment."}
+              action={notFound ? { label: "Browse all products", to: "/products" } : { label: "Try again", onClick: () => refetch() }}
+            />
           </div>
         </div>
       </Layout>
     );
   }
 
-  if (!product) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-12">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold mb-4">Product Not Found</h1>
-            <p className="mb-6">The product you're looking for doesn't exist or has been removed.</p>
-            <Button asChild>
-              <a href="/products">Browse All Products</a>
-            </Button>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+  const inCart = lines.find((l) => l.productId === product.id)?.quantity ?? 0;
+  const remaining = Math.max(0, product.quantityAvailable - inCart);
+  const soldOut = product.quantityAvailable <= 0;
+  const isOwner = profile?.uid === product.sellerId;
+  const isFarmer = profile?.role === "Farmer";
+  const qty = Math.min(quantity, Math.max(1, remaining));
+
+  const handleAdd = () => {
+    const { added, reason } = addItem(product.id, qty, product.quantityAvailable);
+    if (added > 0) {
+      toast({ title: "Added to basket", description: `${added} ${product.unit} of ${product.name}.` });
+      setQuantity(1);
+    } else if (reason === "full") {
+      toast({ title: "Your basket is full", description: "A basket holds up to 50 different products. Check out or remove something first.", variant: "destructive" });
+    } else {
+      toast({ title: "That's all there is", description: `You already have all ${product.quantityAvailable} ${product.unit} in your basket.`, variant: "destructive" });
+    }
+  };
+
+  const details: [string, React.ReactNode][] = [
+    ["Sold by", <Link key="s" to={`/products?seller=${encodeURIComponent(product.sellerId)}`} className="link font-semibold">{product.sellerName}</Link>],
+    ["Category", <Link key="c" to={`/category/${product.categoryId}`} className="link font-semibold">{product.categoryName}</Link>],
+    ["How it's grown", product.productionType ?? "Not stated"],
+    ["Sold in units of", product.unit],
+    ["Listed on", <span key="l" className="figure">{formatDate(product.created_at)}</span>],
+  ];
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
-        {/* Breadcrumb */}
-        <nav className="text-sm mb-6">
-          <ol className="list-none p-0 inline-flex">
-            <li className="flex items-center">
-              <a href="/" className="text-gray-500 hover:text-agrilink-primary">Home</a>
-              <span className="mx-2 text-gray-500">/</span>
-            </li>
-            <li className="flex items-center">
-              <a href="/products" className="text-gray-500 hover:text-agrilink-primary">Products</a>
-              <span className="mx-2 text-gray-500">/</span>
-            </li>
-            <li className="flex items-center">
-              <a href={`/category/${product.categoryId}`} className="text-gray-500 hover:text-agrilink-primary">
-                {product.categoryName}
-              </a>
-              <span className="mx-2 text-gray-500">/</span>
-            </li>
-            <li className="text-gray-900">{product.name}</li>
-          </ol>
-        </nav>
+      <div className="container py-4 md:py-5">
+        <Crumbs items={[{ label: "Home", to: "/" }, { label: product.categoryName, to: `/category/${product.categoryId}` }, { label: product.name }]} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          {/* Product Image */}
-          <div className="bg-white rounded-lg overflow-hidden shadow-lg">
-            <img
-              src={product.imageUrl || "https://via.placeholder.com/600x400"}
-              alt={product.name}
-              className="w-full h-auto object-cover"
-            />
+        <div className="panel grid gap-6 p-4 md:p-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-10">
+          <div className="relative overflow-hidden rounded-lg border border-rule bg-paper-sunk lg:self-start">
+            <img src={product.imageUrl || PLACEHOLDER_IMAGE} alt={product.name} onError={withFallback} className={cn("aspect-square w-full object-cover", soldOut && "opacity-50 grayscale")} />
+            {soldOut && <span className="absolute left-0 top-4 rounded-r bg-ink px-3 py-1 text-xs font-bold text-white">Out of stock</span>}
           </div>
 
-          {/* Product Details */}
           <div>
-            <div className="mb-4">
-              <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
-              <div className="flex items-center mb-4">
-                <div className="flex mr-2">
-                  {renderStars(reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length || 0)}
-                </div>
-                <span className="text-gray-600">
-                  {reviews.length} {reviews.length === 1 ? "review" : "reviews"}
-                </span>
-              </div>
-              {renderProductionLabel()}
+            <Link to={`/products?seller=${encodeURIComponent(product.sellerId)}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-field hover:underline">
+              <Store className="h-4 w-4" /> {product.sellerName}
+            </Link>
+            <h1 className="mt-1 text-2xl font-bold leading-tight md:text-[1.75rem]">{product.name}</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              {product.reviews > 0 && <a href="#reviews" className="hover:underline"><RatingChip value={product.rating} count={product.reviews} /></a>}
+              <ProductionBadge type={product.productionType} />
             </div>
 
-            <div className="mb-6">
-              <p className="text-3xl font-bold mb-2">${product.price.toFixed(2)}</p>
-              <p className={`text-sm ${product.quantityAvailable > 10 ? "text-green-600" : "text-amber-600"}`}>
-                {product.quantityAvailable > 0 
-                  ? `${product.quantityAvailable} units available` 
-                  : "Out of stock"}
+            <div className="mt-4 border-t border-rule pt-4">
+              <p className="flex items-baseline gap-2">
+                <span className="figure text-[2rem] font-extrabold leading-none">{formatPrice(product.price)}</span>
+                {product.mrp && product.mrp > product.price && <><span className="figure text-base text-ink-soft line-through">{formatPrice(product.mrp)}</span><span className="figure rounded bg-field px-1.5 py-0.5 text-xs font-bold text-white">{Math.round((1 - product.price / product.mrp) * 100)}% OFF</span></>}
+                <span className="text-sm text-ink-soft">per {product.unit}</span>
+              </p>
+              <p className="mt-1 text-xs text-ink-soft">Set by the farmer. Shipping is charged once per farm and shown at checkout.</p>
+            </div>
+
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-bold">Pack size</p>
+              <span className="inline-flex items-center gap-2 rounded-lg border-2 border-field bg-field-wash px-4 py-2 text-sm font-semibold">
+                <Check className="h-4 w-4 text-field" strokeWidth={3} /> 1 {product.unit} <span className="figure font-bold">{formatPrice(product.price)}</span>
+              </span>
+              <p className={cn("mt-3 flex items-center gap-2 text-[13px] font-medium", soldOut ? "text-chili" : product.quantityAvailable > 10 ? "text-field" : "text-turmeric-ink")}>
+                <span className={cn("h-2 w-2 rounded-full", soldOut ? "bg-chili" : product.quantityAvailable > 10 ? "bg-field" : "bg-turmeric")} aria-hidden="true" />
+                {soldOut ? "Currently out of stock" : product.quantityAvailable > 10 ? <><span className="figure">{product.quantityAvailable}</span> {product.unit} in stock</> : <>Hurry, only <span className="figure">{product.quantityAvailable}</span> {product.unit} left</>}
               </p>
             </div>
 
-            <div className="border-t border-b py-6 mb-6">
-              <p className="text-gray-700 mb-4">{product.description}</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                <div className="flex flex-col items-center p-3 border rounded-md">
-                  <Truck className="h-6 w-6 text-agrilink-primary mb-2" />
-                  <span className="text-sm text-center">Fast Delivery</span>
+            <div className="mt-5">
+              {isOwner ? (
+                <div className="rounded-lg border border-turmeric/50 bg-turmeric-wash/60 p-4 text-sm">
+                  This is your listing. <Link to="/farmer-dashboard" className="link font-semibold">Edit price and stock on your farm page</Link>.
                 </div>
-                <div className="flex flex-col items-center p-3 border rounded-md">
-                  <ShieldCheck className="h-6 w-6 text-agrilink-primary mb-2" />
-                  <span className="text-sm text-center">Quality Guaranteed</span>
+              ) : isFarmer ? (
+                <p className="rounded-lg bg-paper-sunk p-4 text-sm text-ink-soft">Seller accounts can't place orders. Sign in with a buyer account to purchase.</p>
+              ) : soldOut || remaining === 0 ? (
+                <Button disabled size="lg" className="w-full sm:w-auto">{soldOut ? "Out of stock" : "All available units are in your basket"}</Button>
+              ) : (
+                <div className="flex flex-wrap items-center gap-3">
+                  <QtyStepper tone="plain" label={product.name} value={qty} atMin={qty <= 1} atMax={qty >= remaining} onDecrease={() => setQuantity(qty - 1)} onIncrease={() => setQuantity(qty + 1)} />
+                  <Button variant="add" size="lg" className="min-w-[12rem] flex-1 sm:flex-none" onClick={handleAdd}>
+                    Add to basket · <span className="figure">{formatPrice(product.price * qty)}</span>
+                  </Button>
                 </div>
-                <div className="flex flex-col items-center p-3 border rounded-md">
-                  <RefreshCcw className="h-6 w-6 text-agrilink-primary mb-2" />
-                  <span className="text-sm text-center">Easy Returns</span>
-                </div>
-              </div>
+              )}
+              {inCart > 0 && !isOwner && !isFarmer && <p className="mt-2 text-[13px] text-ink-soft"><span className="figure font-semibold text-ink">{inCart}</span> {product.unit} already in your basket. <Link to="/cart" className="link font-semibold">View basket</Link></p>}
             </div>
 
-            <div className="mb-6">
-              <div className="flex items-center mb-4">
-                <div className="mr-4">
-                  <label className="block text-sm font-medium mb-1">Quantity</label>
-                  <div className="flex items-center border rounded-md">
-                    <button
-                      onClick={handleQuantityDecrease}
-                      className="px-3 py-1 border-r disabled:opacity-50"
-                      disabled={quantity <= 1}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </button>
-                    <input
-                      type="text"
-                      value={quantity}
-                      readOnly
-                      className="w-12 text-center py-1"
-                    />
-                    <button
-                      onClick={handleQuantityIncrease}
-                      className="px-3 py-1 border-l disabled:opacity-50"
-                      disabled={quantity >= product.quantityAvailable}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Total</label>
-                  <p className="font-bold">${(product.price * quantity).toFixed(2)}</p>
-                </div>
-              </div>
-              <Button 
-                className="w-full bg-agrilink-primary hover:bg-agrilink-secondary"
-                onClick={() => {
-                  addToCart(product, quantity);
-                  toast({
-                    title: "Added to cart",
-                    description: `${quantity}x ${product.name} added to your cart.`
-                  });
-                }}
-              >
-                Add to Cart
-              </Button>
-            </div>
-
-            <div className="mt-8">
-              <div className="flex items-center text-sm text-gray-600">
-                <span className="font-medium mr-2">Seller:</span>
-                <a href={`/farmer/${product.sellerId}`} className="text-agrilink-primary hover:underline">
-                  {product.sellerName}
-                </a>
-              </div>
-            </div>
+            <ul className="mt-6 grid gap-3 rounded-lg border border-rule p-4 text-[13px] sm:grid-cols-3">
+              {[
+                [Banknote, "Pay on delivery", "Cash when it arrives"],
+                [Truck, "Shipped by the farmer", product.sellerName],
+                [ShieldCheck, "Verified reviews", "Delivered orders only"],
+              ].map(([Icon, t, s]) => {
+                const I = Icon as React.ElementType;
+                return (
+                  <li key={t as string} className="flex items-start gap-2.5">
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-field-wash text-field"><I className="h-4 w-4" /></span>
+                    <span className="min-w-0"><span className="block font-semibold leading-tight">{t as string}</span><span className="block truncate text-ink-soft">{s as string}</span></span>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         </div>
 
-        {/* Product Reviews */}
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold mb-6">Customer Reviews</h2>
-          
-          {reviews.length > 0 ? (
-            <div className="space-y-6">
-              {reviews.map(review => (
-                <Card key={review.id} className="p-6">
-                  <div className="flex items-center mb-4">
-                    <div className="mr-4">
-                      <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                        <span className="text-gray-600 font-medium">
-                          {review.userName?.substring(0, 1) || "U"}
-                        </span>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="font-medium">{review.userName}</p>
-                      <div className="flex items-center">
-                        <div className="flex mr-2">
-                          {renderStars(review.rating)}
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          {new Date(review.reviewDate).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-gray-700">{review.reviewText}</p>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 border rounded-lg">
-              <p className="text-gray-500">No reviews yet. Be the first to review this product!</p>
-            </div>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          {product.description && (
+            <section className="panel p-4 md:p-6" aria-labelledby="about-h">
+              <h2 id="about-h" className="text-lg font-bold">About this product</h2>
+              <p className="mt-2 whitespace-pre-line text-[14.5px] leading-relaxed">{product.description}</p>
+            </section>
           )}
+          <section className={cn("panel p-4 md:p-6", !product.description && "lg:col-span-2")} aria-labelledby="det-h">
+            <h2 id="det-h" className="text-lg font-bold">Product details</h2>
+            <dl className="mt-2 divide-y divide-rule text-sm">
+              {details.map(([k, v]) => (
+                <div key={k} className="flex items-baseline justify-between gap-4 py-2.5">
+                  <dt className="text-ink-soft">{k}</dt>
+                  <dd className="text-right">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
         </div>
+
+        <ProductReviews product={product} />
       </div>
+
+      <ProductRail id="more-seller" title={`More from ${product.sellerName}`} to={`/products?seller=${encodeURIComponent(product.sellerId)}`} filters={{ sellerId: product.sellerId, inStock: true, limit: 13 }} excludeId={product.id} />
     </Layout>
   );
 };

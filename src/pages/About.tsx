@@ -1,74 +1,59 @@
-
 import React from "react";
+import { Link } from "react-router-dom";
+import { Banknote, ShoppingBasket, Sprout, Truck } from "lucide-react";
 import Layout from "@/components/Layout";
-import { Separator } from "@/components/ui/separator";
+import { Crumbs } from "@/components/PageState";
 
-const About: React.FC = () => {
-  return (
-    <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-3xl font-bold mb-2">About Agrilink</h1>
-          <p className="text-muted-foreground mb-8">Connecting farmers and consumers for a sustainable future</p>
-          <Separator className="mb-8" />
-          
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">Our Mission</h2>
-            <p className="mb-4">
-              At Agrilink, we're on a mission to transform the agricultural supply chain by connecting 
-              farmers directly to consumers. We believe in fair prices for farmers, fresh produce for 
-              consumers, and sustainable practices for our planet.
-            </p>
-            <p>
-              By eliminating unnecessary middlemen, we ensure that farmers receive better compensation 
-              for their hard work while consumers enjoy fresher, more affordable produce.
-            </p>
-          </div>
-          
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">Our Story</h2>
-            <p className="mb-4">
-              Agrilink was founded in 2023 by a team of agricultural experts and technology 
-              enthusiasts who saw the challenges faced by small-scale farmers. Despite their hard work, 
-              many farmers struggled to get fair prices for their produce due to complex supply chains.
-            </p>
-            <p>
-              We created a platform that leverages technology to bridge this gap, empowering farmers 
-              with direct market access and providing consumers with transparency about where their 
-              food comes from.
+const steps = [
+  { icon: Sprout, title: "Farmers list", text: "Local farmers list what they've grown, with their own price and the quantity they have." },
+  { icon: ShoppingBasket, title: "You order", text: "Browse, filter by category or how it was grown, and order from one farm or several in a single basket." },
+  { icon: Truck, title: "Farmers deliver", text: "Each farmer accepts, ships and delivers their own items. You can follow every item separately." },
+  { icon: Banknote, title: "You pay on delivery", text: "Pay in cash when your items arrive, then rate what you received." },
+];
+
+const About: React.FC = () => (
+  <Layout>
+    <div className="container max-w-5xl py-4 md:py-5">
+      <Crumbs items={[{ label: "Home", to: "/" }, { label: "About us" }]} />
+
+      <section className="panel overflow-hidden">
+        <div className="bg-gradient-to-r from-[#e7f4d4] to-[#bfe38a] p-6 md:p-10">
+          <h1 className="max-w-xl text-2xl font-extrabold leading-tight md:text-4xl">Fresh food, straight from the people who grow it</h1>
+          <p className="mt-3 max-w-xl text-[15px] text-ink/80">Agrilink is a marketplace where farmers sell directly to buyers: fresher produce, fairer prices, and nobody in the middle.</p>
+        </div>
+        <div className="grid gap-8 p-6 md:grid-cols-2 md:p-10">
+          <div>
+            <h2 className="text-lg font-bold">Our mission</h2>
+            <p className="mt-2 text-[14.5px] leading-relaxed text-ink-soft">
+              We want to shorten the road between the field and the kitchen. By removing unnecessary middlemen, farmers get better compensation for their work and buyers get fresher, more affordable produce.
             </p>
           </div>
-          
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">How It Works</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-              <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <div className="text-agrilink-primary font-bold text-xl mb-2">1</div>
-                <h3 className="font-semibold mb-2">Farmers List Products</h3>
-                <p className="text-sm text-muted-foreground">
-                  Local farmers list their fresh produce, setting their own prices and quantities.
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <div className="text-agrilink-primary font-bold text-xl mb-2">2</div>
-                <h3 className="font-semibold mb-2">Consumers Browse & Buy</h3>
-                <p className="text-sm text-muted-foreground">
-                  Customers browse listings and place orders directly with farmers.
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <div className="text-agrilink-primary font-bold text-xl mb-2">3</div>
-                <h3 className="font-semibold mb-2">Direct Delivery</h3>
-                <p className="text-sm text-muted-foreground">
-                  Products are delivered fresh from farm to table, ensuring quality and freshness.
-                </p>
-              </div>
-            </div>
+          <div>
+            <h2 className="text-lg font-bold">Where Agrilink came from</h2>
+            <p className="mt-2 text-[14.5px] leading-relaxed text-ink-soft">
+              Agrilink began as a university project around one question: what if a small farmer could reach buyers directly, set their own price, and see exactly what each order is worth? Today it's a working marketplace where every order shows who is responsible for each item.
+            </p>
           </div>
         </div>
-      </div>
-    </Layout>
-  );
-};
+      </section>
+
+      <section className="mt-4" aria-labelledby="how-h">
+        <h2 id="how-h" className="mb-3 text-xl font-bold">How Agrilink works</h2>
+        <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map(({ icon: Icon, title, text }, i) => (
+            <li key={title} className="panel p-5">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-field-wash text-field"><Icon className="h-6 w-6" /></span>
+              <p className="mt-3 text-xs font-bold text-field">Step {i + 1}</p>
+              <h3 className="text-base font-bold">{title}</h3>
+              <p className="mt-1 text-[13.5px] text-ink-soft">{text}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <p className="panel mt-4 p-5 text-[15px] font-medium">Have a question? <Link to="/contact#faq" className="font-bold text-field hover:underline">Read the FAQs</Link> or <Link to="/contact" className="font-bold text-field hover:underline">write to us</Link>.</p>
+    </div>
+  </Layout>
+);
 
 export default About;
